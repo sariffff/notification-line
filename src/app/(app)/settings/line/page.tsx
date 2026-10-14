@@ -24,13 +24,17 @@ export default async function LineSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {linked ? <UnlinkButton /> : (
+          {!lineOaId() && !linked ? (
+            <p role="alert" className="rounded-lg bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              ระบบยังไม่ได้ตั้งค่า LINE Official Account (NEXT_PUBLIC_LINE_OA_ID) — กรุณาแจ้งผู้ดูแลระบบ
+            </p>
+          ) : linked ? <UnlinkButton /> : (
             <ol className="space-y-6">
               <li>
                 <p className="font-medium">1. เพิ่มเพื่อน LINE Official Account</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   บนมือถือ กดปุ่มด้านล่าง · บนคอมพิวเตอร์ ลิงก์จะแสดง QR ให้สแกนด้วย LINE
-                  {lineOaId() && <> (ID: <span className="font-mono">{lineOaId()}</span>)</>}
+                  {' '}(ID: <span className="font-mono">{lineOaId()}</span>)
                 </p>
                 <a href={addFriendUrl()} target="_blank" rel="noopener noreferrer"
                   className="mt-2 inline-flex h-11 items-center rounded-lg bg-[#06C755] px-4 text-sm font-medium text-white hover:bg-[#05b34c]">

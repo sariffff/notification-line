@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySignature, replyText } from '@/lib/line';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireEnv } from '@/lib/config';
 
 type LineEvent = {
   type: string;
@@ -10,8 +11,11 @@ type LineEvent = {
 };
 
 export async function POST(req: NextRequest) {
+  const secret = requireEnv('LINE_CHANNEL_SECRET');
+  if (!secret) return NextResponse.json({ error: 'server misconfigured' }, { status: 500 });
+
   const raw = await req.text();
-  if (!verifySignature(raw, req.headers.get('x-line-signature'))) {
+  if (!verifySignature(raw, req.headers.get('x-line-signature'), secret)) {
     return NextResponse.json({ error: 'bad signature' }, { status: 401 });
   }
   const { events = [] } = JSON.parse(raw) as { events?: LineEvent[] };

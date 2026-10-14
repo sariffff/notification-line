@@ -1,12 +1,14 @@
 import 'server-only';
 import crypto from 'node:crypto';
+import { requireEnv } from './config';
 
 // LINE_API_BASE ใช้ชี้ไป mock server ตอนทดสอบเท่านั้น — production ไม่ต้องตั้ง
 const API = `${process.env.LINE_API_BASE ?? 'https://api.line.me'}/v2/bot/message`;
-const headers = () => ({
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-});
+function headers() {
+  const token = requireEnv('LINE_CHANNEL_ACCESS_TOKEN');
+  if (!token) throw new Error('ยังไม่ได้ตั้ง LINE_CHANNEL_ACCESS_TOKEN');
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+}
 
 /**
  * retryKey: ถ้าส่ง key เดิมซ้ำภายใน 24 ชม. LINE จะไม่ส่งซ้ำและตอบ 409 → ถือว่าสำเร็จ
@@ -28,16 +30,21 @@ export function retryKeyFor(seed: string): string {
 
 /** reply ไม่นับโควตา — ใช้ตอบใน webhook */
 export async function replyText(replyToken: string, text: string) {
-  const res = await fetch(`${API}/reply`, {
-    method: 'POST', headers: headers(),
-    body: JSON.stringify({ replyToken, messages: [{ type: 'text', text }] }),
-  });
-  if (!res.ok) console.error('LINE reply', res.status, await res.text());
+  try {
+    const res = await fetch(`${API}/reply`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ replyToken, messages: [{ type: 'text', text }] }),
+    });
+    if (!res.ok) console.error('LINE reply', res.status, await res.text());
+  } catch (e) {
+    console.error('LINE reply', e);   // ตอบไม่ได้ไม่ควรทำให้ webhook ทั้งก้อนล้ม
+  }
 }
 
-export function verifySignature(rawBody: string, signature: string | null): boolean {
+/** ต้องเช็คก่อนว่ามี LINE_CHANNEL_SECRET (ใน webhook route) */
+export function verifySignature(rawBody: string, signature: string | null, secret: string): boolean {
   if (!signature) return false;
-  const hash = crypto.createHmac('sha256', process.env.LINE_CHANNEL_SECRET!)
+  const hash = crypto.createHmac('sha256', secret)
     .update(rawBody).digest('base64');
   const a = Buffer.from(hash), b = Buffer.from(signature);
   return a.length === b.length && crypto.timingSafeEqual(a, b);

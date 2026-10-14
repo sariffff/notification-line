@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { todayTH, currentDueDate } from '@/lib/dates';
 import { computeDue, buildMessage, type ContractRow, type DueReminder } from '@/lib/reminders';
 import { pushText, retryKeyFor } from '@/lib/line';
+import { appUrl as getAppUrl, requireEnv } from '@/lib/config';
 import type { Database } from '@/types/database';
 
 export const maxDuration = 60;
@@ -13,7 +14,9 @@ const LOG_KEY = 'contract_id,user_id,due_date,offset_days,channel';
 const k = (contractId: string, userId: string, x: string | number) => `${contractId}:${userId}:${x}`;
 
 export async function GET(req: NextRequest) {
-  if (!process.env.CRON_SECRET || req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = requireEnv('CRON_SECRET');
+  if (!cronSecret) return NextResponse.json({ error: 'server misconfigured' }, { status: 500 });
+  if (req.headers.get('authorization') !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -22,7 +25,7 @@ export async function GET(req: NextRequest) {
   const today = process.env.NODE_ENV !== 'production' && override && /^\d{4}-\d{2}-\d{2}$/.test(override)
     ? override : todayTH();
   const dryRun = req.nextUrl.searchParams.get('dry') === '1';
-  const appUrl = process.env.APP_URL!;
+  const appUrl = getAppUrl();
   const db = supabaseAdmin();
 
   const { data: run } = dryRun
