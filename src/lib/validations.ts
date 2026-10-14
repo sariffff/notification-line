@@ -34,7 +34,6 @@ export const contractSchema = z
     error: 'วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น',
   });
 
-export type ContractInput = z.infer<typeof contractSchema>;
 
 /** แปลง FormData → object ที่ schema รับ (ช่องที่เลือกได้หลายค่าใช้ getAll) */
 export function contractFormData(fd: FormData) {
